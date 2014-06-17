@@ -371,11 +371,6 @@ pci_vtnet_proctx(struct pci_vtnet_softc *sc, struct vqueue_info *vq)
 		if (!more)
 			netbe_send(sc->vsc_be, iov, 0, 0, 0); // flush
 	}
-		
-
-	/* XXX is it safe to do a relchain if more is set and we
-	 * use indirect buffers ?
-	 */
 	/* chain is processed, release it and set tlen */
 	vq_relchain(vq, tlen, !more);
 }
