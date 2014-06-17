@@ -4,7 +4,7 @@
 
 PROG=	bhyve
 
-DEBUG_FLAGS= -g -O0
+DEBUG_FLAGS= -g -O0 
 
 MAN=	bhyve.8
 
@@ -40,9 +40,6 @@ SRCS=	\
 	virtio.c		\
 	xmsr.c			\
 	spinup_ap.c
-
-S=/usr/home/luigi/FreeBSD/head
-M=/usr/home/luigi/FreeBSD/obj_head${S}/tmp/usr
 
 .PATH:	${.CURDIR}/../../sys/amd64/vmm
 SRCS+=	vmm_instruction_emul.c
