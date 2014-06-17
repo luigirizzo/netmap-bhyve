@@ -334,7 +334,7 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 		/*
 		 * Release this chain and handle more chains.
 		 */
-		vq_relchain(vq, len + sizeof(struct virtio_net_rxhdr));
+		vq_relchain(vq, len + sizeof(struct virtio_net_rxhdr), 1);
 	} while (vq_has_descs(vq));
 
 	/* Interrupt if needed, including for NOTIFY_ON_EMPTY. */
@@ -392,7 +392,7 @@ pci_vtnet_proctx(struct pci_vtnet_softc *sc, struct vqueue_info *vq)
 	pci_vtnet_tap_tx(sc, &iov[1], n - 1, plen);
 
 	/* chain is processed, release it and set tlen */
-	vq_relchain(vq, tlen);
+	vq_relchain(vq, tlen, 1);
 }
 
 static void

@@ -93,6 +93,7 @@ vi_reset_dev(struct virtio_softc *vs)
 	for (vq = vs->vs_queues, i = 0; i < nvq; vq++, i++) {
 		vq->vq_flags = 0;
 		vq->vq_last_avail = 0;
+		vq->vq_cur_used = 0;
 		vq->vq_pfn = 0;
 		vq->vq_msix_idx = VIRTIO_MSI_NO_VECTOR;
 	}
@@ -184,6 +185,7 @@ vi_vq_init(struct virtio_softc *vs, uint32_t pfn)
 	/* Mark queue as allocated, and start at 0 when we use it. */
 	vq->vq_flags = VQ_ALLOC;
 	vq->vq_last_avail = 0;
+	vq->vq_cur_used = 0;
 }
 
 /*
@@ -371,11 +373,15 @@ loopy:
  *
  * (This chain is the one you handled when you called vq_getchain()
  * and used its positive return value.)
+ *
+ * The chain is exposed to the guest (together with previously held
+ * chains) only when flush is set. In this way a virtio hypervisor driver
+ * can process multiple chains before exposing them to the guest.
  */
 void
-vq_relchain(struct vqueue_info *vq, uint32_t iolen)
+vq_relchain(struct vqueue_info *vq, uint32_t iolen, int flush)
 {
-	uint16_t head, uidx, mask;
+	uint16_t head, mask;
 	volatile struct vring_used *vuh;
 	volatile struct virtio_used *vue;
 
@@ -393,11 +399,11 @@ vq_relchain(struct vqueue_info *vq, uint32_t iolen)
 	vuh = vq->vq_used;
 	head = vq->vq_avail->va_ring[vq->vq_last_avail++ & mask];
 
-	uidx = vuh->vu_idx;
-	vue = &vuh->vu_ring[uidx++ & mask];
+	vue = &vuh->vu_ring[vq->vq_cur_used++ & mask];
 	vue->vu_idx = head; /* ie, vue->id = head */
 	vue->vu_tlen = iolen;
-	vuh->vu_idx = uidx;
+	if (flush)
+		vuh->vu_idx = vq->vq_cur_used;
 }
 
 /*
