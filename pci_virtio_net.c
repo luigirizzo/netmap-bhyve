@@ -151,6 +151,7 @@ static void pci_vtnet_reset(void *);
 /* static void pci_vtnet_notify(void *, struct vqueue_info *); */
 static int pci_vtnet_cfgread(void *, int, int, uint32_t *);
 static int pci_vtnet_cfgwrite(void *, int, int, uint32_t);
+static void pci_vtnet_apply_features(void *, uint32_t);
 
 static struct virtio_consts vtnet_vi_consts = {
 	"vtnet",		/* our name */
@@ -160,6 +161,7 @@ static struct virtio_consts vtnet_vi_consts = {
 	NULL,			/* device-wide qnotify -- not used */
 	pci_vtnet_cfgread,	/* read PCI config */
 	pci_vtnet_cfgwrite,	/* write PCI config */
+	pci_vtnet_apply_features, /* apply negotiated features */
 	VTNET_S_HOSTCAPS,	/* our capabilities */
 };
 
@@ -671,6 +673,18 @@ pci_vtnet_cfgread(void *vsc, int offset, int size, uint32_t *retval)
 	ptr = (uint8_t *)&sc->vsc_config + offset;
 	memcpy(retval, ptr, size);
 	return (0);
+}
+
+static void
+pci_vtnet_apply_features(void *vsc, uint32_t negotiated_features)
+{
+#if 0
+	struct pci_vtnet_softc *sc = vsc;
+	
+	/* Tell the backend to enable some features it has advertised.
+	 */
+	netbe_set_features(sc->vsc_be, negotiated_features);
+#endif
 }
 
 struct pci_devemu pci_de_vnet = {
