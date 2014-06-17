@@ -235,7 +235,7 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	 * Return the descriptor back to the host.
 	 * We wrote 1 byte (our status) to host.
 	 */
-	vq_relchain(vq, 1);
+	vq_relchain(vq, 1, 1);
 }
 
 static void
