@@ -1,3 +1,4 @@
+#
 # $FreeBSD: stable/10/usr.sbin/bhyve/Makefile 267450 2014-06-13 21:30:40Z jhb $
 #
 
@@ -6,9 +7,6 @@ PROG=	bhyve
 DEBUG_FLAGS= -g -O2 -Wall -Werror
 
 MAN=	bhyve.8
-
-#	pci_e1000.c		\
-#	pci_82545.c		\
 
 SRCS=	\
 	acpi.c			\
@@ -43,19 +41,24 @@ SRCS=	\
 	xmsr.c			\
 	spinup_ap.c
 
+.PATH:	${.CURDIR}/../../sys/amd64/vmm
+SRCS+=	vmm_instruction_emul.c
+
+.ifdef CROSS_BUILD
 BASEDIR=/usr/home/luigi/FreeBSD
 S=${BASEDIR}/R10
 M=${BASEDIR}/obj_R10${S}/tmp/usr
-
-.PATH:	${.CURDIR}/../../sys/amd64/vmm ${S}/sys/amd64/vmm /usr/src/sys/amd64/vmm 
-SRCS+=	vmm_instruction_emul.c
-
+.PATH: ${S}/sys/amd64/vmm /usr/src/sys/amd64/vmm 
 CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
+.endif
 
+.ifdef WITH_E1000
 # extra headers for e1000 drivers
+SRCS +=	pci_e1000.c pci_82545.c
 CFLAGS += -I/usr/src/sys
 CFLAGS += -I/usr/src/sys/dev/e1000
 CFLAGS += -I/usr/src/sys/dev/mii
+.endif
 
 DPADD=	${LIBVMMAPI} ${LIBMD} ${LIBUTIL} ${LIBPTHREAD}
 LDADD=	-lvmmapi -lmd -lutil -lpthread

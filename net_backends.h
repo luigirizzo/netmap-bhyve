@@ -28,7 +28,6 @@
 #define __NET_BACKENDS_H__
 
 #include <stdint.h>
-#include "mevent.h"
 
 extern int netmap_ioctl_counter;
 
