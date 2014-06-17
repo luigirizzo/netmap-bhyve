@@ -470,6 +470,7 @@ vq_avail_descs(struct vqueue_info *vq)
 static inline void
 vq_startchains(struct vqueue_info *vq)
 {
+
 	VQ_AVAIL_EVENT_IDX(vq) = vq->vq_last_avail - vq->vq_qsize - 1;
 	vq->vq_save_used = vq->vq_used->vu_idx;
 }
