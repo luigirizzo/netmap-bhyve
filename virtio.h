@@ -281,6 +281,32 @@ struct vmctx;
 struct pci_devinst;
 struct vqueue_info;
 
+#define RATE  /* Enable debug statistics. */
+#ifdef RATE
+struct rate_ctx {
+#define RATE_MAX_QUEUES	8
+	unsigned int intr[RATE_MAX_QUEUES];
+	unsigned int kick[RATE_MAX_QUEUES];
+	unsigned int proc[RATE_MAX_QUEUES];
+	unsigned int var1[RATE_MAX_QUEUES];
+	unsigned int var2[RATE_MAX_QUEUES];
+	unsigned int var3[RATE_MAX_QUEUES];
+	unsigned int evidx[RATE_MAX_QUEUES];
+	unsigned int evidxintr[RATE_MAX_QUEUES];
+	unsigned int guestintr[RATE_MAX_QUEUES];
+	unsigned int guestintron[RATE_MAX_QUEUES];
+};
+
+struct rate_info {
+	struct mevent *mevp;
+	struct rate_ctx cur;
+	struct rate_ctx prev;
+};
+#define IFRATE(x) x
+#else
+#define IFRATE(x)
+#endif
+
 /*
  * A virtual device, with some number (possibly 0) of virtual
  * queues and some size (possibly 0) of configuration-space
@@ -326,6 +352,7 @@ struct virtio_softc {
 	uint8_t	vs_status;		/* value from last status write */
 	uint8_t	vs_isr;			/* ISR flags, if not MSI-X */
 	uint16_t vs_msix_cfg_idx;	/* MSI-X vector for config event */
+	IFRATE(struct rate_info rate);
 };
 
 #define	VS_LOCK(vs)							\
@@ -351,6 +378,8 @@ struct virtio_consts {
 					/* called to read config regs */
 	int	(*vc_cfgwrite)(void *, int, int, uint32_t);
 					/* called to write config regs */
+	void	(*vc_apply_features)(void *, uint32_t);
+				/* called to apply negotiated features */
 	uint32_t vc_hv_caps;		/* hypervisor-provided capabilities */
 };
 
@@ -383,6 +412,7 @@ struct vqueue_info {
 
 	uint16_t vq_flags;	/* flags (see above) */
 	uint16_t vq_last_avail;	/* a recent value of vq_avail->va_idx */
+	uint16_t vq_cur_used;	/* used idx seen by vq_relchain */
 	uint16_t vq_save_used;	/* saved vq_used->vu_idx; see vq_endchains */
 	uint16_t vq_msix_idx;	/* MSI-X index, or VIRTIO_MSI_NO_VECTOR */
 
@@ -421,6 +451,14 @@ vq_has_descs(struct vqueue_info *vq)
 	    vq->vq_avail->va_idx);
 }
 
+static inline uint16_t
+vq_avail_descs(struct vqueue_info *vq)
+{
+
+	return (vq_ring_ready(vq) ?
+		(uint16_t)(vq->vq_avail->va_idx - vq->vq_last_avail)  : 0);
+}
+
 /*
  * Called by virtio driver as it starts processing chains.  Each
  * completed chain (obtained from vq_getchain()) is released by
@@ -431,8 +469,32 @@ vq_has_descs(struct vqueue_info *vq)
 static inline void
 vq_startchains(struct vqueue_info *vq)
 {
-
+	VQ_AVAIL_EVENT_IDX(vq) = vq->vq_last_avail - vq->vq_qsize - 1;
 	vq->vq_save_used = vq->vq_used->vu_idx;
+}
+
+/*
+ * Enable guest-to-host notifications on a virtual queue.
+ */
+static inline void
+vq_notifications_enable(struct vqueue_info *vq)
+{
+	/* It's not necessary to check whether we are using
+	 * the VIRTIO_RING_F_EVENT_IDX features or not, we just
+	 * do both.
+	 */
+	VQ_AVAIL_EVENT_IDX(vq) = vq->vq_last_avail;
+	vq->vq_used->vu_flags &= ~VRING_USED_F_NO_NOTIFY;
+}
+
+/*
+ * Disable guest-to-host notifications on a virtual queue.
+ */
+static inline void
+vq_notifications_disable(struct vqueue_info *vq)
+{
+
+	vq->vq_used->vu_flags |= VRING_USED_F_NO_NOTIFY;
 }
 
 /*
@@ -452,6 +514,7 @@ vq_interrupt(struct virtio_softc *vs, struct vqueue_info *vq)
 		pci_lintr_assert(vs->vs_pi);
 		VS_UNLOCK(vs);
 	}
+	IFRATE(vq->vq_vs->rate.cur.intr[vq->vq_num]++);
 }
 
 struct iovec;
@@ -464,7 +527,7 @@ void	vi_set_io_bar(struct virtio_softc *, int);
 
 int	vq_getchain(struct vqueue_info *vq,
 		    struct iovec *iov, int n_iov, uint16_t *flags);
-void	vq_relchain(struct vqueue_info *vq, uint32_t iolen);
+void	vq_relchain(struct vqueue_info *vq, uint32_t iolen, int flush);
 void	vq_endchains(struct vqueue_info *vq, int used_all_avail);
 
 uint64_t vi_pci_read(struct vmctx *ctx, int vcpu, struct pci_devinst *pi,

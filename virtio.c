@@ -93,6 +93,7 @@ vi_reset_dev(struct virtio_softc *vs)
 	for (vq = vs->vs_queues, i = 0; i < nvq; vq++, i++) {
 		vq->vq_flags = 0;
 		vq->vq_last_avail = 0;
+		vq->vq_cur_used = 0;
 		vq->vq_pfn = 0;
 		vq->vq_msix_idx = VIRTIO_MSI_NO_VECTOR;
 	}
@@ -184,6 +185,7 @@ vi_vq_init(struct virtio_softc *vs, uint32_t pfn)
 	/* Mark queue as allocated, and start at 0 when we use it. */
 	vq->vq_flags = VQ_ALLOC;
 	vq->vq_last_avail = 0;
+	vq->vq_cur_used = 0;
 }
 
 /*
@@ -368,14 +370,18 @@ loopy:
 /*
  * Return the currently-first request chain to the guest, setting
  * its I/O length to the provided value.
+ * The chain is actually exposed to the guest (together with previously
+ * not exposed chains) only when flush is set. In this way a virtio
+ * hypervisor driver can process multiple avail buffers before exposing
+ * them to the guest.
  *
  * (This chain is the one you handled when you called vq_getchain()
  * and used its positive return value.)
  */
 void
-vq_relchain(struct vqueue_info *vq, uint32_t iolen)
+vq_relchain(struct vqueue_info *vq, uint32_t iolen, int flush)
 {
-	uint16_t head, uidx, mask;
+	uint16_t head, mask;
 	volatile struct vring_used *vuh;
 	volatile struct virtio_used *vue;
 
@@ -393,11 +399,12 @@ vq_relchain(struct vqueue_info *vq, uint32_t iolen)
 	vuh = vq->vq_used;
 	head = vq->vq_avail->va_ring[vq->vq_last_avail++ & mask];
 
-	uidx = vuh->vu_idx;
-	vue = &vuh->vu_ring[uidx++ & mask];
+	vue = &vuh->vu_ring[vq->vq_cur_used++ & mask];
 	vue->vu_idx = head; /* ie, vue->id = head */
 	vue->vu_tlen = iolen;
-	vuh->vu_idx = uidx;
+	if (flush)
+		vuh->vu_idx = vq->vq_cur_used;
+	IFRATE(vq->vq_vs->rate.cur.proc[vq->vq_num]++);
 }
 
 /*
@@ -437,7 +444,8 @@ vq_endchains(struct vqueue_info *vq, int used_all_avail)
 	if (used_all_avail &&
 	    (vs->vs_negotiated_caps & VIRTIO_F_NOTIFY_ON_EMPTY))
 		intr = 1;
-	else if (vs->vs_flags & VIRTIO_EVENT_IDX) {
+	// else if (vs->vs_flags & VIRTIO_EVENT_IDX) {
+	else if (vs->vs_negotiated_caps & VIRTIO_RING_F_EVENT_IDX) {
 		event_idx = VQ_USED_EVENT_IDX(vq);
 		/*
 		 * This calculation is per docs and the kernel
@@ -445,9 +453,15 @@ vq_endchains(struct vqueue_info *vq, int used_all_avail)
 		 */
 		intr = (uint16_t)(new_idx - event_idx - 1) <
 			(uint16_t)(new_idx - old_idx);
+		IFRATE(vq->vq_vs->rate.cur.evidx[vq->vq_num]++);
+		if (intr)
+		    IFRATE(vq->vq_vs->rate.cur.evidxintr[vq->vq_num]++);
 	} else {
 		intr = new_idx != old_idx &&
 		    !(vq->vq_avail->va_flags & VRING_AVAIL_F_NO_INTERRUPT);
+		IFRATE(vq->vq_vs->rate.cur.guestintr[vq->vq_num]++);
+		if (intr)
+		    IFRATE(vq->vq_vs->rate.cur.guestintron[vq->vq_num]++);
 	}
 	if (intr)
 		vq_interrupt(vs, vq);
@@ -694,6 +708,10 @@ bad:
 	switch (offset) {
 	case VTCFG_R_GUESTCAP:
 		vs->vs_negotiated_caps = value & vc->vc_hv_caps;
+		if (vc->vc_apply_features) {
+			(*vc->vc_apply_features)(DEV_SOFTC(vs),
+					vs->vs_negotiated_caps);
+		}
 		break;
 	case VTCFG_R_PFN:
 		if (vs->vs_curq >= vc->vc_nvq)
@@ -723,6 +741,7 @@ bad:
 			fprintf(stderr,
 			    "%s: qnotify queue %d: missing vq/vc notify\r\n",
 				name, (int)value);
+		IFRATE(vq->vq_vs->rate.cur.kick[vq->vq_num]++);
 		break;
 	case VTCFG_R_STATUS:
 		vs->vs_status = value;
