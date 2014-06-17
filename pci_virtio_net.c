@@ -51,6 +51,7 @@ __FBSDID("$FreeBSD: head/usr.sbin/bhyve/pci_virtio_net.c 264770 2014-04-22 18:55
 
 #include "bhyverun.h"
 #include "pci_emul.h"
+#include "mevent.h"
 #include "virtio.h"
 #include "dev/virtio/network/virtio_net.h"
 #include "net_backends.h"
@@ -58,6 +59,11 @@ __FBSDID("$FreeBSD: head/usr.sbin/bhyve/pci_virtio_net.c 264770 2014-04-22 18:55
 #define VTNET_RINGSZ	1024
 
 #define VTNET_MAXSEGS	32
+
+#define VTNET_S_HOSTCAPS      \
+  ( VIRTIO_NET_F_MAC | VIRTIO_NET_F_MRG_RXBUF | VIRTIO_NET_F_STATUS | \
+    VIRTIO_RING_F_EVENT_IDX | \
+    VIRTIO_F_NOTIFY_ON_EMPTY)
 
 /*
  * Queue definitions.
@@ -104,11 +110,6 @@ static void pci_vtnet_reset(void *);
 static int pci_vtnet_cfgread(void *, int, int, uint32_t *);
 static int pci_vtnet_cfgwrite(void *, int, int, uint32_t);
 static void pci_vtnet_apply_features(void *, uint32_t);
-
-#define VTNET_S_HOSTCAPS      \
-    ( VIRTIO_NET_F_MAC | VIRTIO_NET_F_MRG_RXBUF | VIRTIO_NET_F_STATUS | \
-	VIRTIO_RING_F_EVENT_IDX | \
-      VIRTIO_F_NOTIFY_ON_EMPTY)
 
 static struct virtio_consts vtnet_vi_consts = {
 	"vtnet",		/* our name */
@@ -178,16 +179,17 @@ pci_vtnet_reset(void *vsc)
 	sc->resetting = 0;
 }
 
-/*
- *  MP note: the dummybuf is only used for discarding frames, so there
- * is no need for it to be per-vtnet or locked.
- */
-static uint8_t dummybuf[65536+64];	/* XXX very large... */
-
 void
 pci_vtnet_rx_discard(struct pci_vtnet_softc *sc, struct iovec *iov)
 {
 	int more;
+
+	/*
+	 * MP note: the dummybuf is only used to discard frames,
+	 * so there is no need for it to be per-vtnet or locked.
+	 * We only make it large enough for TSO-sized segment.
+	 */
+	static uint8_t dummybuf[65536+64];
 
 	iov[0].iov_base = dummybuf;
 	iov[0].iov_len = sizeof(dummybuf);
@@ -245,7 +247,6 @@ pci_vtnet_rx(struct pci_vtnet_softc *sc)
 		 */
 		pci_vtnet_rx_discard(sc, iov);
 		vq_endchains(vq, 1);
-
 		return;
 	}
 
@@ -328,10 +329,7 @@ pci_vtnet_ping_rxq(void *vsc, struct vqueue_info *vq)
 		return;
 	}
 
-	/*
-	 * Keep rx queue notifications disabled as long as we have
-	 * avail buffers.
-	 */
+	/* Disable rx queue notifications if we have buffers. */
 	vq_notifications_disable(vq);
 
 	/*
@@ -373,11 +371,6 @@ pci_vtnet_proctx(struct pci_vtnet_softc *sc, struct vqueue_info *vq)
 		if (!more)
 			netbe_send(sc->vsc_be, iov, 0, 0, 0); // flush
 	}
-		
-
-	/* XXX is it safe to do a relchain if more is set and we
-	 * use indirect buffers ?
-	 */
 	/* chain is processed, release it and set tlen */
 	vq_relchain(vq, tlen, !more);
 }
@@ -393,11 +386,8 @@ pci_vtnet_ping_txq(void *vsc, struct vqueue_info *vq)
 	if (!vq_has_descs(vq))
 		return;
 
-	/*
-	 * Signal the tx thread for processing. We keep the
-	 * tx queue notifications disabled as long as the
-	 * thread is active.
-	 */
+	/* Signal the tx thread for processing. */
+	/* Disable tx queue notifications when the thread is active. */
 	pthread_mutex_lock(&sc->tx_mtx);
 	vq_notifications_disable(vq);
 	if (sc->tx_in_progress == 0)

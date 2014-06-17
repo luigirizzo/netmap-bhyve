@@ -44,12 +44,27 @@ SRCS=	\
 S=/usr/home/luigi/FreeBSD/head
 M=/usr/home/luigi/FreeBSD/obj_head${S}/tmp/usr
 
-.PATH:	${.CURDIR}/../../sys/amd64/vmm ${S}/sys/amd64/vmm
+.PATH:	${.CURDIR}/../../sys/amd64/vmm
 SRCS+=	vmm_instruction_emul.c
+
+.ifdef CROSS_BUILD
+BASEDIR=/usr/home/luigi/FreeBSD
+S=${BASEDIR}/head
+M=${BASEDIR}/obj_head${S}/tmp/usr
+.PATH: ${S}/sys/amd64/vmm
+CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
+.endif
+
+.ifdef WITH_E1000
+# extra headers for e1000 drivers
+SRCS +=      pci_e1000.c pci_82545.c
+CFLAGS += -I/usr/src/sys
+CFLAGS += -I/usr/src/sys/dev/e1000
+CFLAGS += -I/usr/src/sys/dev/mii
+.endif
 
 DPADD=	${LIBVMMAPI} ${LIBMD} ${LIBUTIL} ${LIBPTHREAD}
 LDADD=	-lvmmapi -lmd -lutil -lpthread
-CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
 
 WARNS?=	2
 

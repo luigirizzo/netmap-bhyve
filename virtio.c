@@ -404,6 +404,7 @@ vq_relchain(struct vqueue_info *vq, uint32_t iolen, int flush)
 	vue->vu_tlen = iolen;
 	if (flush)
 		vuh->vu_idx = vq->vq_cur_used;
+	IFRATE(vq->vq_vs->rate.cur.proc[vq->vq_num]++);
 }
 
 /*
@@ -443,7 +444,7 @@ vq_endchains(struct vqueue_info *vq, int used_all_avail)
 	if (used_all_avail &&
 	    (vs->vs_negotiated_caps & VIRTIO_F_NOTIFY_ON_EMPTY))
 		intr = 1;
-	else if (vs->vs_flags & VIRTIO_EVENT_IDX) {
+	else if (vs->vs_negotiated_caps & VIRTIO_RING_F_EVENT_IDX) { // XXX
 		event_idx = VQ_USED_EVENT_IDX(vq);
 		/*
 		 * This calculation is per docs and the kernel
@@ -451,9 +452,15 @@ vq_endchains(struct vqueue_info *vq, int used_all_avail)
 		 */
 		intr = (uint16_t)(new_idx - event_idx - 1) <
 			(uint16_t)(new_idx - old_idx);
+		IFRATE(vq->vq_vs->rate.cur.evidx[vq->vq_num]++);
+		if (intr)
+		    IFRATE(vq->vq_vs->rate.cur.evidxintr[vq->vq_num]++);
 	} else {
 		intr = new_idx != old_idx &&
 		    !(vq->vq_avail->va_flags & VRING_AVAIL_F_NO_INTERRUPT);
+		IFRATE(vq->vq_vs->rate.cur.guestintr[vq->vq_num]++);
+		if (intr)
+		    IFRATE(vq->vq_vs->rate.cur.guestintron[vq->vq_num]++);
 	}
 	if (intr)
 		vq_interrupt(vs, vq);
@@ -702,7 +709,7 @@ bad:
 		vs->vs_negotiated_caps = value & vc->vc_hv_caps;
 		if (vc->vc_apply_features) {
 			(*vc->vc_apply_features)(DEV_SOFTC(vs),
-				vs->vs_negotiated_caps);
+					vs->vs_negotiated_caps);
 		}
 		break;
 	case VTCFG_R_PFN:
@@ -733,6 +740,7 @@ bad:
 			fprintf(stderr,
 			    "%s: qnotify queue %d: missing vq/vc notify\r\n",
 				name, (int)value);
+		IFRATE(vq->vq_vs->rate.cur.kick[vq->vq_num]++);
 		break;
 	case VTCFG_R_STATUS:
 		vs->vs_status = value;
