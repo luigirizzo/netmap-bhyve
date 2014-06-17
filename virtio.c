@@ -697,6 +697,7 @@ bad:
 		if (vc->vc_apply_features) {
 			(*vc->vc_apply_features)(DEV_SOFTC(vs),
 					vs->vs_negotiated_caps);
+		}
 		break;
 	case VTCFG_R_PFN:
 		if (vs->vs_curq >= vc->vc_nvq)
