@@ -43,6 +43,14 @@ SRCS=	\
 .PATH:	${.CURDIR}/../../sys/amd64/vmm
 SRCS+=	vmm_instruction_emul.c
 
+.ifdef CROSS_BUILD
+BASEDIR=/usr/home/luigi/FreeBSD
+S=${BASEDIR}/head
+M=${BASEDIR}/obj_head${S}/tmp/usr
+.PATH: ${S}/sys/amd64/vmm
+CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
+.endif
+
 DPADD=	${LIBVMMAPI} ${LIBMD} ${LIBUTIL} ${LIBPTHREAD}
 LDADD=	-lvmmapi -lmd -lutil -lpthread
 
