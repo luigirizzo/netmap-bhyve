@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/usr.sbin/bhyve/pci_emul.c 267294 2014-06-09 19:55:50Z tychon $
+ * $FreeBSD: head/usr.sbin/bhyve/pci_emul.c 266125 2014-05-15 14:16:55Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/usr.sbin/bhyve/pci_emul.c 267294 2014-06-09 19:55:50Z tychon $");
+__FBSDID("$FreeBSD: head/usr.sbin/bhyve/pci_emul.c 266125 2014-05-15 14:16:55Z jhb $");
 
 #include <sys/param.h>
 #include <sys/linker_set.h>

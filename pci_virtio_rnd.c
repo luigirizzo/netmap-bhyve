@@ -125,7 +125,7 @@ pci_vtrnd_notify(void *vsc, struct vqueue_info *vq)
 		/*
 		 * Release this chain and handle more
 		 */
-		vq_relchain(vq, len);
+		vq_relchain(vq, len, 1);
 	}
 	vq_endchains(vq, 1);	/* Generate interrupt if appropriate. */
 }

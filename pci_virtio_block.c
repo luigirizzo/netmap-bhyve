@@ -133,6 +133,7 @@ static struct virtio_consts vtblk_vi_consts = {
 	pci_vtblk_notify,	/* device-wide qnotify */
 	pci_vtblk_cfgread,	/* read PCI config */
 	pci_vtblk_cfgwrite,	/* write PCI config */
+	NULL,
 	VTBLK_S_HOSTCAPS,	/* our capabilities */
 };
 
@@ -234,7 +235,7 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	 * Return the descriptor back to the host.
 	 * We wrote 1 byte (our status) to host.
 	 */
-	vq_relchain(vq, 1);
+	vq_relchain(vq, 1, 1);
 }
 
 static void

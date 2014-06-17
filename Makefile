@@ -4,7 +4,7 @@
 
 PROG=	bhyve
 
-DEBUG_FLAGS= -g -O0 
+DEBUG_FLAGS= -g -O0
 
 MAN=	bhyve.8
 
@@ -20,6 +20,7 @@ SRCS=	\
 	mem.c			\
 	mevent.c		\
 	mptbl.c			\
+	net_backends.c		\
 	pci_ahci.c		\
 	pci_emul.c		\
 	pci_hostbridge.c	\
@@ -40,11 +41,15 @@ SRCS=	\
 	xmsr.c			\
 	spinup_ap.c
 
-.PATH:	${.CURDIR}/../../sys/amd64/vmm
+S=/usr/home/luigi/FreeBSD/head
+M=/usr/home/luigi/FreeBSD/obj_head${S}/tmp/usr
+
+.PATH:	${.CURDIR}/../../sys/amd64/vmm ${S}/sys/amd64/vmm
 SRCS+=	vmm_instruction_emul.c
 
 DPADD=	${LIBVMMAPI} ${LIBMD} ${LIBUTIL} ${LIBPTHREAD}
 LDADD=	-lvmmapi -lmd -lutil -lpthread
+CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
 
 WARNS?=	2
 
