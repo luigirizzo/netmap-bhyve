@@ -425,6 +425,14 @@ vq_has_descs(struct vqueue_info *vq)
 	    vq->vq_avail->va_idx);
 }
 
+static inline uint16_t
+vq_avail_descs(struct vqueue_info *vq)
+{
+
+	return (vq_ring_ready(vq) ?
+		(uint16_t)(vq->vq_avail->va_idx - vq->vq_last_avail)  : 0);
+}
+
 /*
  * Called by virtio driver as it starts processing chains.  Each
  * completed chain (obtained from vq_getchain()) is released by
@@ -436,7 +444,32 @@ static inline void
 vq_startchains(struct vqueue_info *vq)
 {
 
+	VQ_AVAIL_EVENT_IDX(vq) = vq->vq_last_avail - vq->vq_qsize - 1;
 	vq->vq_save_used = vq->vq_used->vu_idx;
+}
+
+/*
+ * Enable guest-to-host notifications on a virtual queue.
+ */
+static inline void
+vq_notifications_enable(struct vqueue_info *vq)
+{
+	/* It's not necessary to check whether we are using
+	 * the VIRTIO_RING_F_EVENT_IDX features or not, we just
+	 * do both.
+	 */
+	VQ_AVAIL_EVENT_IDX(vq) = vq->vq_last_avail;
+	vq->vq_used->vu_flags &= ~VRING_USED_F_NO_NOTIFY;
+}
+
+/*
+ * Disable guest-to-host notifications on a virtual queue.
+ */
+static inline void
+vq_notifications_disable(struct vqueue_info *vq)
+{
+
+	vq->vq_used->vu_flags |= VRING_USED_F_NO_NOTIFY;
 }
 
 /*
