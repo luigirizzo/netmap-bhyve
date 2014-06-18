@@ -235,10 +235,9 @@ pci_vtnet_rx(struct pci_vtnet_softc *sc)
 	vq_startchains(vq);
 	if (!vq_has_descs(vq)) {
 		/*
-		 * Since we've run out of virtio buffers we enable the
-		 * notifications on the rx queue. No doubleckeck is
-		 * necessary here, because we don't have a queue between
-		 * the backend and us: We just drop packets.
+		 * No more buffers, enable notifications on the rx queue.
+		 * Doubleckeck is not necessary here, because we don't have
+		 * a queue between the backend and us: we just drop packets.
 		 */
 		vq_notifications_enable(vq);
 		/*
@@ -282,9 +281,9 @@ pci_vtnet_rx(struct pci_vtnet_softc *sc)
 		merged++;
 		if (!more) {
 			/*
-			 * We have done receiving the packet from
-			 * the backend. Store the number of merged
-			 * buffers into the virtio-net header.
+			 * We have completed the packet from the backend.
+			 * Store the number of merged buffers into the
+			 * virtio-net header.
 			 */
 			assert(hdr);
 			hdr->num_buffers = merged;
@@ -386,7 +385,7 @@ pci_vtnet_ping_txq(void *vsc, struct vqueue_info *vq)
 	if (!vq_has_descs(vq))
 		return;
 
-	/* Signal the tx thread for processing. */
+	/* Signal the tx thread for processing */
 	/* Disable tx queue notifications when the thread is active. */
 	pthread_mutex_lock(&sc->tx_mtx);
 	vq_notifications_disable(vq);
