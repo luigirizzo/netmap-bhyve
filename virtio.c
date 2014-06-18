@@ -370,13 +370,13 @@ loopy:
 /*
  * Return the currently-first request chain to the guest, setting
  * its I/O length to the provided value.
- * The chain is actually exposed to the guest (together with previously
- * not exposed chains) only when flush is set. In this way a virtio
- * hypervisor driver can process multiple avail buffers before exposing
- * them to the guest.
  *
  * (This chain is the one you handled when you called vq_getchain()
  * and used its positive return value.)
+ *
+ * The chain is exposed to the guest (together with previously held
+ * chains) only when flush is set. In this way a virtio hypervisor driver
+ * can process multiple chains before exposing them to the guest.
  */
 void
 vq_relchain(struct vqueue_info *vq, uint32_t iolen, int flush)
