@@ -54,7 +54,7 @@ CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
 
 .ifdef WITH_E1000
 # extra headers for e1000 drivers
-SRCS +=      pci_e1000.c pci_82545.c
+SRCS += pci_e1000.c pci_82545.c
 CFLAGS += -I/usr/src/sys
 CFLAGS += -I/usr/src/sys/dev/e1000
 CFLAGS += -I/usr/src/sys/dev/mii
