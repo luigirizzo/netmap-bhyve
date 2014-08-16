@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/pci_lpc.h 261265 2014-01-29 13:35:12Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/pci_lpc.h 268972 2014-07-22 03:14:37Z jhb $
  */
 
 #ifndef _LPC_H_
@@ -66,5 +66,7 @@ struct lpc_sysres {
 #define	SYSRES_MEM(base, length)	LPC_SYSRES(LPC_SYSRES_MEM, base, length)
 
 int	lpc_device_parse(const char *opt);
+char	*lpc_pirq_name(int pin);
+void	lpc_pirq_routed(void);
 
 #endif

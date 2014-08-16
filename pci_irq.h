@@ -1,5 +1,6 @@
 /*-
- * Copyright (c) 2011 NetApp, Inc.
+ * Copyright (c) 2014 Advanced Computing Technologies LLC
+ * Written by: John H. Baldwin <jhb@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,10 +12,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY NETAPP, INC ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL NETAPP, INC OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,23 +24,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/pit_8254.h 245678 2013-01-20 03:42:49Z neel $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/pci_irq.h 268972 2014-07-22 03:14:37Z jhb $
  */
 
-#ifndef _PIT_8254_H_
-#define	_PIT_8254_H_
+#ifndef __PCI_IRQ_H__
+#define	__PCI_IRQ_H__
 
-/*
- * Borrowed from amd64/include/timerreg.h because in that file it is
- * conditionally compiled for #ifdef _KERNEL only.
- */
+struct pci_devinst;
 
-#include <dev/ic/i8253reg.h>
+void	pci_irq_assert(struct pci_devinst *pi);
+void	pci_irq_deassert(struct pci_devinst *pi);
+void	pci_irq_init(struct vmctx *ctx);
+void	pci_irq_reserve(int irq);
+void	pci_irq_use(int irq);
+int	pirq_alloc_pin(struct vmctx *ctx);
+int	pirq_irq(int pin);
+uint8_t	pirq_read(int pin);
+void	pirq_write(struct vmctx *ctx, int pin, uint8_t val);
 
-#define	IO_TIMER1	0x40		/* 8253 Timer #1 */
-#define	TIMER_CNTR0	(IO_TIMER1 + TIMER_REG_CNTR0)
-#define	TIMER_CNTR1	(IO_TIMER1 + TIMER_REG_CNTR1)
-#define	TIMER_CNTR2	(IO_TIMER1 + TIMER_REG_CNTR2)
-#define	TIMER_MODE	(IO_TIMER1 + TIMER_REG_MODE)
-
-#endif	/* _PIT_8254_H_ */
+#endif

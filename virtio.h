@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/virtio.h 267401 2014-06-12 15:24:33Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/virtio.h 268933 2014-07-21 00:21:56Z jhb $
  */
 
 #ifndef	_VIRTIO_H_
@@ -209,6 +209,7 @@ struct vring_used {
 #define	VIRTIO_VENDOR		0x1AF4
 #define	VIRTIO_DEV_NET		0x1000
 #define	VIRTIO_DEV_BLOCK	0x1001
+#define	VIRTIO_DEV_RANDOM	0x1002
 
 /*
  * PCI config space constants.
@@ -285,16 +286,16 @@ struct vqueue_info;
 #ifdef RATE
 struct rate_ctx {
 #define RATE_MAX_QUEUES	8
-	unsigned int intr[RATE_MAX_QUEUES];
-	unsigned int kick[RATE_MAX_QUEUES];
-	unsigned int proc[RATE_MAX_QUEUES];
-	unsigned int var1[RATE_MAX_QUEUES];
-	unsigned int var2[RATE_MAX_QUEUES];
-	unsigned int var3[RATE_MAX_QUEUES];
-	unsigned int evidx[RATE_MAX_QUEUES];
-	unsigned int evidxintr[RATE_MAX_QUEUES];
-	unsigned int guestintr[RATE_MAX_QUEUES];
-	unsigned int guestintron[RATE_MAX_QUEUES];
+	uint64_t intr[RATE_MAX_QUEUES];
+	uint64_t kick[RATE_MAX_QUEUES];
+	uint64_t proc[RATE_MAX_QUEUES];
+	uint64_t var1[RATE_MAX_QUEUES];
+	uint64_t var2[RATE_MAX_QUEUES];
+	uint64_t var3[RATE_MAX_QUEUES];
+	uint64_t evidx[RATE_MAX_QUEUES];
+	uint64_t evidxintr[RATE_MAX_QUEUES];
+	uint64_t guestintr[RATE_MAX_QUEUES];
+	uint64_t guestintron[RATE_MAX_QUEUES];
 };
 
 struct rate_info {
@@ -404,6 +405,8 @@ struct virtio_consts {
 #define	VQ_BROKED	0x02	/* ??? */
 struct vqueue_info {
 	uint16_t vq_qsize;	/* size of this queue (a power of 2) */
+
+	uint16_t vq_pending;	// XXX luigi
 	void	(*vq_notify)(void *, struct vqueue_info *);
 				/* called instead of vc_notify, if not NULL */
 
@@ -469,6 +472,7 @@ vq_avail_descs(struct vqueue_info *vq)
 static inline void
 vq_startchains(struct vqueue_info *vq)
 {
+
 	VQ_AVAIL_EVENT_IDX(vq) = vq->vq_last_avail - vq->vq_qsize - 1;
 	vq->vq_save_used = vq->vq_used->vu_idx;
 }

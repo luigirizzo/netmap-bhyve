@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/bhyverun.h 267450 2014-06-13 21:30:40Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/bhyverun.h 268894 2014-07-19 22:24:29Z jhb $
  */
 
 #ifndef	_FBSDRUN_H_
@@ -43,7 +43,7 @@ extern char *vmname;
 void *paddr_guest2host(struct vmctx *ctx, uintptr_t addr, size_t len);
 
 void fbsdrun_set_capabilities(struct vmctx *ctx, int cpu);
-void fbsdrun_addcpu(struct vmctx *ctx, int cpu, uint64_t rip);
+void fbsdrun_addcpu(struct vmctx *ctx, int fromcpu, int newcpu, uint64_t rip);
 int  fbsdrun_muxed(void);
 int  fbsdrun_vmexit_on_hlt(void);
 int  fbsdrun_vmexit_on_pause(void);

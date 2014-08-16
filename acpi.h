@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/acpi.h 261265 2014-01-29 13:35:12Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/acpi.h 268972 2014-07-22 03:14:37Z jhb $
  */
 
 #ifndef _ACPI_H_
@@ -49,5 +49,6 @@ void	dsdt_fixed_irq(uint8_t irq);
 void	dsdt_fixed_mem32(uint32_t base, uint32_t length);
 void	dsdt_indent(int levels);
 void	dsdt_unindent(int levels);
+void	sci_init(struct vmctx *ctx);
 
 #endif /* _ACPI_H_ */

@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/xmsr.c 264273 2014-04-08 20:40:54Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/xmsr.c 268953 2014-07-21 19:08:02Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/xmsr.c 264273 2014-04-08 20:40:54Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/xmsr.c 268953 2014-07-21 19:08:02Z jhb $");
 
 #include <sys/types.h>
 
@@ -47,6 +47,8 @@ emulate_wrmsr(struct vmctx *ctx, int vcpu, uint32_t code, uint64_t val)
 	case 0xd04:			/* Sandy Bridge uncore PMC MSRs */
 	case 0xc24:
 		return (0);
+	case 0x79:
+		return (0);		/* IA32_BIOS_UPDT_TRIG MSR */
 	default:
 		break;
 	}

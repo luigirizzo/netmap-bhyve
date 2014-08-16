@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/mem.c 249342 2013-04-10 18:53:14Z neel $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/mem.c 268976 2014-07-22 04:39:16Z jhb $
  */
 
 /*
@@ -33,12 +33,13 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/mem.c 249342 2013-04-10 18:53:14Z neel $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/mem.c 268976 2014-07-22 04:39:16Z jhb $");
 
 #include <sys/types.h>
 #include <sys/tree.h>
 #include <sys/errno.h>
 #include <machine/vmm.h>
+#include <machine/vmm_instruction_emul.h>
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/consport.c 262227 2014-02-19 18:36:53Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/consport.c 267928 2014-06-26 19:19:06Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/consport.c 262227 2014-02-19 18:36:53Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/consport.c 267928 2014-06-26 19:19:06Z jhb $");
 
 #include <sys/types.h>
 #include <sys/select.h>
@@ -107,6 +107,15 @@ console_handler(struct vmctx *ctx, int vcpu, int in, int port, int bytes,
 
 	if (bytes == 2 && in) {
 		*eax = BVM_CONS_SIG;
+		return (0);
+	}
+
+	/*
+	 * Guests might probe this port to look for old ISA devices
+	 * using single-byte reads.  Return 0xff for those.
+	 */
+	if (bytes == 1 && in) {
+		*eax = 0xff;
 		return (0);
 	}
 

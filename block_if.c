@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/block_if.c 267071 2014-06-04 18:08:08Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/block_if.c 268953 2014-07-21 19:08:02Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/block_if.c 267071 2014-06-04 18:08:08Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/block_if.c 268953 2014-07-21 19:08:02Z jhb $");
 
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -270,13 +270,12 @@ blockif_open(const char *optstr, const char *ident)
 		assert(sectsz != 0);
 	}
 
-	bc = malloc(sizeof(struct blockif_ctxt));
+	bc = calloc(1, sizeof(struct blockif_ctxt));
 	if (bc == NULL) {
 		close(fd);
 		return (NULL);
 	}
 
-	memset(bc, 0, sizeof(*bc));
 	bc->bc_magic = BLOCKIF_SIG;
 	bc->bc_fd = fd;
 	bc->bc_size = size;

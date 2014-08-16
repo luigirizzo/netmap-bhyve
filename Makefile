@@ -1,5 +1,5 @@
 #
-# $FreeBSD: stable/10/usr.sbin/bhyve/Makefile 267450 2014-06-13 21:30:40Z jhb $
+# $FreeBSD: stable/10/usr.sbin/bhyve/Makefile 268972 2014-07-22 03:14:37Z jhb $
 #
 
 PROG=	bhyve
@@ -9,13 +9,12 @@ DEBUG_FLAGS= -g -O2 -Wall -Werror
 MAN=	bhyve.8
 
 SRCS=	\
+	atkbdc.c		\
 	acpi.c			\
-	atpic.c			\
 	bhyverun.c		\
 	block_if.c		\
 	consport.c		\
 	dbgport.c		\
-	elcr.c			\
 	inout.c			\
 	ioapic.c		\
 	mem.c			\
@@ -25,12 +24,13 @@ SRCS=	\
 	pci_ahci.c		\
 	pci_emul.c		\
 	pci_hostbridge.c	\
+	pci_irq.c		\
 	pci_lpc.c		\
 	pci_passthru.c		\
 	pci_virtio_block.c	\
 	pci_virtio_net.c	\
+	pci_virtio_rnd.c	\
 	pci_uart.c		\
-	pit_8254.c		\
 	pm.c			\
 	pmtmr.c			\
 	post.c			\
@@ -54,7 +54,7 @@ CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
 
 .ifdef WITH_E1000
 # extra headers for e1000 drivers
-SRCS +=	pci_e1000.c pci_82545.c
+SRCS += pci_e1000.c pci_82545.c
 CFLAGS += -I/usr/src/sys
 CFLAGS += -I/usr/src/sys/dev/e1000
 CFLAGS += -I/usr/src/sys/dev/mii

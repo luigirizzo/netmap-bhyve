@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011 NetApp, Inc.
+ * Copyright (c) 2014 Tycho Nightingale <tycho.nightingale@pluribusnetworks.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,10 +11,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY NETAPP, INC ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL NETAPP, INC OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -22,46 +22,64 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: stable/10/usr.sbin/bhyve/elcr.c 261265 2014-01-29 13:35:12Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/elcr.c 261265 2014-01-29 13:35:12Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/atkbdc.c 268934 2014-07-21 02:17:28Z jhb $");
 
 #include <sys/types.h>
+
+#include <machine/vmm.h>
+
+#include <stdio.h>
 
 #include "inout.h"
 #include "pci_lpc.h"
 
-/*
- * EISA interrupt Level Control Register.
- *
- * This is a 16-bit register with one bit for each of the IRQ0 through IRQ15.
- * A level triggered irq is indicated by setting the corresponding bit to '1'.
- */
-#define	ELCR_PORT	0x4d0
+#define	KBD_DATA_PORT		0x60
 
-static uint8_t elcr[2] = { 0x00, 0x00 };
+#define	KBD_STS_CTL_PORT	0x64
+#define	 KBD_SYS_FLAG		0x4
+
+#define	KBDC_RESET		0xfe
 
 static int
-elcr_handler(struct vmctx *ctx, int vcpu, int in, int port, int bytes,
-	     uint32_t *eax, void *arg)
+atkbdc_data_handler(struct vmctx *ctx, int vcpu, int in, int port, int bytes,
+    uint32_t *eax, void *arg)
 {
-	int idx;
+	if (bytes != 1)
+		return (INOUT_ERROR);
+
+	*eax = 0;
+
+	return (INOUT_OK);
+}
+
+static int
+atkbdc_sts_ctl_handler(struct vmctx *ctx, int vcpu, int in, int port,
+    int bytes, uint32_t *eax, void *arg)
+{
+	int retval;
 
 	if (bytes != 1)
-		return (-1);
+		return (INOUT_ERROR);
 
-	idx = port - ELCR_PORT;
+	retval = INOUT_OK;
+	if (in) {
+		*eax = KBD_SYS_FLAG;	/* system passed POST */
+	} else {
+		switch (*eax) {
+		case KBDC_RESET:	/* Pulse "reset" line. */
+			retval = INOUT_RESET;
+			break;
+		}
+	}
 
-	if (in)
-		*eax = elcr[idx];
-	else
-		elcr[idx] = *eax;
-
-	return (0);
+	return (retval);
 }
-INOUT_PORT(elcr, ELCR_PORT + 0, IOPORT_F_INOUT, elcr_handler);
-INOUT_PORT(elcr, ELCR_PORT + 1, IOPORT_F_INOUT, elcr_handler);
-SYSRES_IO(ELCR_PORT, 2);
+
+INOUT_PORT(atkdbc, KBD_DATA_PORT, IOPORT_F_INOUT, atkbdc_data_handler);
+SYSRES_IO(KBD_DATA_PORT, 1);
+INOUT_PORT(atkbdc, KBD_STS_CTL_PORT,  IOPORT_F_INOUT,
+    atkbdc_sts_ctl_handler);
+SYSRES_IO(KBD_STS_CTL_PORT, 1);

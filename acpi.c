@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/acpi.c 267450 2014-06-13 21:30:40Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/acpi.c 268972 2014-07-22 03:14:37Z jhb $
  */
 
 /*
@@ -50,7 +50,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/acpi.c 267450 2014-06-13 21:30:40Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/acpi.c 268972 2014-07-22 03:14:37Z jhb $");
 
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -704,7 +704,7 @@ basl_fwrite_dsdt(FILE *fp)
 	dsdt_line("DefinitionBlock (\"bhyve_dsdt.aml\", \"DSDT\", 2,"
 		 "\"BHYVE \", \"BVDSDT  \", 0x00000001)");
 	dsdt_line("{");
-	dsdt_line("  Name (_S5, Package (0x02)");
+	dsdt_line("  Name (_S5, Package ()");
 	dsdt_line("  {");
 	dsdt_line("      0x05,");
 	dsdt_line("      Zero,");
@@ -713,7 +713,7 @@ basl_fwrite_dsdt(FILE *fp)
 	pci_write_dsdt();
 
 	dsdt_line("");
-	dsdt_line("  Scope (_SB.PCI0)");
+	dsdt_line("  Scope (_SB.PC00)");
 	dsdt_line("  {");
 	dsdt_line("    Device (HPET)");
 	dsdt_line("    {");

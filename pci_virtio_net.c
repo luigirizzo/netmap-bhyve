@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_net.c 267393 2014-06-12 13:13:15Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_net.c 268953 2014-07-21 19:08:02Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_net.c 267393 2014-06-12 13:13:15Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_net.c 268953 2014-07-21 19:08:02Z jhb $");
 
 #include <sys/param.h>
 #include <sys/linker_set.h>
@@ -235,10 +235,9 @@ pci_vtnet_rx(struct pci_vtnet_softc *sc)
 	vq_startchains(vq);
 	if (!vq_has_descs(vq)) {
 		/*
-		 * Since we've run out of virtio buffers we enable the
-		 * notifications on the rx queue. No doubleckeck is
-		 * necessary here, because we don't have a queue between
-		 * the backend and us: We just drop packets.
+		 * No more buffers, enable notifications on the rx queue.
+		 * Doubleckeck is not necessary here, because we don't have
+		 * a queue between the backend and us: we just drop packets.
 		 */
 		vq_notifications_enable(vq);
 		/*
@@ -282,9 +281,9 @@ pci_vtnet_rx(struct pci_vtnet_softc *sc)
 		merged++;
 		if (!more) {
 			/*
-			 * We have done receiving the packet from
-			 * the backend. Store the number of merged
-			 * buffers into the virtio-net header.
+			 * We have completed the packet from the backend.
+			 * Store the number of merged buffers into the
+			 * virtio-net header.
 			 */
 			assert(hdr);
 			hdr->num_buffers = merged;
@@ -359,20 +358,25 @@ pci_vtnet_proctx(struct pci_vtnet_softc *sc, struct vqueue_info *vq)
 	for (i = 1; i < n; i++) {
 		tlen += iov[i].iov_len;
 	}
-	more = vq_avail_descs(vq) > 1;
+	more = vq->vq_pending < 64 && vq_avail_descs(vq) > 1;
 	if (more)
 		IFRATE(vq->vq_vs->rate.cur.var1[vq->vq_num]++);
 
 	DPRINTF(("virtio: packet send, %d bytes, %d segs\n\r", tlen, n));
+	vq->vq_pending++;
 	netbe_send(sc->vsc_be, iov, n, tlen, 1 /* more */);
 	if (!more) {
-		usleep(1);
-		more = vq_avail_descs(vq) > 1;
-		if (!more)
+		IFRATE(vq->vq_vs->rate.cur.var3[vq->vq_num]++);
+		if (vq->vq_pending < 64)
+			usleep(1);
+		more = vq->vq_pending < 64 && vq_avail_descs(vq) > 1;
+		if (!more) {
+			vq->vq_pending = 0;
 			netbe_send(sc->vsc_be, iov, 0, 0, 0); // flush
+		}
 	}
 	/* chain is processed, release it and set tlen */
-	vq_relchain(vq, tlen, !more);
+	vq_relchain(vq, tlen, 1); // always, with NO_INDIRECT !more);
 }
 
 static void
@@ -386,7 +390,7 @@ pci_vtnet_ping_txq(void *vsc, struct vqueue_info *vq)
 	if (!vq_has_descs(vq))
 		return;
 
-	/* Signal the tx thread for processing. */
+	/* Signal the tx thread for processing */
 	/* Disable tx queue notifications when the thread is active. */
 	pthread_mutex_lock(&sc->tx_mtx);
 	vq_notifications_disable(vq);
@@ -440,6 +444,7 @@ pci_vtnet_tx_thread(void *param)
 				 */
 				if (!vq_has_descs(vq)) {
 					sc->tx_in_progress = 0;
+					IFRATE(vq->vq_vs->rate.cur.var2[vq->vq_num]++);
 					error = pthread_cond_wait(&sc->tx_cond,
 								&sc->tx_mtx);
 					assert(error == 0);
@@ -507,33 +512,33 @@ pci_vtnet_parsemac(char *mac_str, uint8_t *mac_addr)
 
 #ifdef RATE
 #define RATE_MS	1500
-#define RATE_FPRINTF(r, i, x)                                      \
-		fprintf(stderr, #x "[%d] %10.6f KHz\n", i,             \
-			(float)(r->cur.x[i] - r->prev.x[i])/RATE_MS)
+#define _E(r, x, i)	(u_long)((r->cur.x[i] - r->prev.x[i])*1000/RATE_MS)
 
 int netmap_ioctl_counter;
+static int rate_idx;
+static void *rate_list[64];
 static void rate_timer_cb(int fd, enum ev_type type, void *param)
 {
-	struct pci_vtnet_softc *sc = param;
+   int i;
+   for (i=0; i < rate_idx && rate_list[i]; i++) {
+	struct pci_vtnet_softc *sc = rate_list[i];
 	struct rate_info *r = &sc->vsc_vs.rate;
-	int i;
-
-	fprintf(stderr, "=======================\n");
-	for (i = 0; i < 2; i++) {
-		RATE_FPRINTF(r, i, intr);
-		RATE_FPRINTF(r, i, kick);
-		RATE_FPRINTF(r, i, proc);
-		RATE_FPRINTF(r, i, var1);
-		r->cur.var2[i] = netmap_ioctl_counter;
-		RATE_FPRINTF(r, i, var2);
-		RATE_FPRINTF(r, i, var3);
-		RATE_FPRINTF(r, i, evidx);
-		RATE_FPRINTF(r, i, evidxintr);
-		RATE_FPRINTF(r, i, guestintr);
-		RATE_FPRINTF(r, i, guestintron);
-	}
+	fprintf(stderr, "======== device %p ===============\n", r);
+		fprintf(stderr, "%-12s %10lu %10lu\n", "intr", _E(r, intr, 0), _E(r, intr, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "kick", _E(r, kick, 0), _E(r, kick, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "proc", _E(r, proc, 0), _E(r, proc, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "var1", _E(r, var1, 0), _E(r, var1, 1));
+		r->cur.var2[0] = netmap_ioctl_counter;
+		fprintf(stderr, "%-12s %10lu %10lu\n", "ioctl", _E(r, var2, 0), _E(r, var2, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "var3", _E(r, var3, 0), _E(r, var3, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "evidx", _E(r, evidx, 0), _E(r, evidx, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "evidxintr", _E(r, evidxintr, 0), _E(r, evidxintr, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "guestintr", _E(r, guestintr, 0), _E(r, guestintr, 1));
+		fprintf(stderr, "%-12s %10lu %10lu\n", "guestintron", _E(r, guestintron, 0), _E(r, guestintron, 1));
 	r->prev = r->cur;
+    }
 }
+
 #endif /* RATE */
 
 static int
@@ -651,8 +656,11 @@ pci_vtnet_init(struct vmctx *ctx, struct pci_devinst *pi, char *opts)
         pthread_set_name_np(sc->tx_tid, tname);
 
 #ifdef RATE
-	snprintf(tname, sizeof(tname), "rate-virtio-%d", getpid());
-	sc->vsc_vs.rate.mevp = mevent_add(RATE_MS, EVF_TIMER, rate_timer_cb, sc);
+	if (rate_idx == 0) {
+		snprintf(tname, sizeof(tname), "rate-virtio-%d", getpid());
+		sc->vsc_vs.rate.mevp = mevent_add(RATE_MS, EVF_TIMER, rate_timer_cb, sc);
+	}
+	rate_list[rate_idx++] = sc;
 #endif /* RATE */
 	return (0);
 }

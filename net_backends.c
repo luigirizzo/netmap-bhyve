@@ -51,6 +51,12 @@
 
 #include <sys/linker_set.h>
 
+#define NETMAP_WITH_LIBS
+#include <net/netmap_user.h>
+#if (NETMAP_API < 11)
+#error "Netmap API version must be >= 11"
+#endif
+
 /*
  * The API for network backends. This might need to be exposed
  * if we implement them in separate files.
@@ -117,6 +123,7 @@ static int
 netbe_null_init(struct net_backend *be, const char *devname,
 			net_backend_cb_t cb, void *param)
 {
+	D("initializing null backend");
 	be->fd = -1;
 	return 0;
 }
@@ -124,17 +131,20 @@ netbe_null_init(struct net_backend *be, const char *devname,
 static void
 netbe_null_cleanup(struct net_backend *be)
 {
+	D("");
 }
 
 static uint32_t
 netbe_null_get_features(struct net_backend *be)
 {
+	D("");
 	return 0;
 }
 
 static uint32_t
 netbe_null_set_features(struct net_backend *be, uint32_t features)
 {
+	D("setting 0x%x", features);
 	return 0;
 }
 
@@ -316,11 +326,6 @@ DATA_SET(net_backend_set, tap_backend);
  * The netmap backend
  */
 
-#define NETMAP_WITH_LIBS
-#include <net/netmap_user.h>
-#if (NETMAP_API < 11)
-#error "Netmap API version must be >= 11"
-#endif
 
 /* The virtio-net features supported by netmap. */
 #define NETMAP_FEATURES (VIRTIO_NET_F_CSUM | VIRTIO_NET_F_HOST_TSO4 | \
@@ -539,9 +544,10 @@ netmap_send(struct net_backend *be, struct iovec *iov,
 			dst = (uint8_t *)NETMAP_BUF(ring, idx);
 
 			ring->slot[i].len = nm_frag_size;
+// #define USE_INDIRECT_BUFFERS
 #ifdef USE_INDIRECT_BUFFERS
 			ring->slot[i].flags = NS_MOREFRAG | NS_INDIRECT;
-			*((const uint8_t **)dst) = iov[j].iov_base + offset;
+			ring->slot[i].ptr = (uintptr_t)(iov[j].iov_base + offset);
 #else	/* !USE_INDIRECT_BUFFERS */
 			ring->slot[i].flags = NS_MOREFRAG;
 			pkt_copy(iov[j].iov_base + offset, dst, nm_frag_size);
@@ -561,7 +567,7 @@ netmap_send(struct net_backend *be, struct iovec *iov,
 	ring->cur = ring->head = i;
 
 txsync:
-	if (!more || nm_ring_space(ring) < 64) {
+	if (!more) {// || nm_ring_space(ring) < 64) {
 		// IFRATE(vq->vq_vs->rate.cur.var2[vq->vq_num]++);
 		netmap_ioctl_counter++;
 		ioctl(be->fd, NIOCTXSYNC, NULL);
@@ -570,7 +576,8 @@ txsync:
 	return 0;
 }
 
-static int netmap_receive(struct net_backend *be, struct iovec *iov,
+static int
+netmap_receive(struct net_backend *be, struct iovec *iov,
 			  int iovcnt, int *more)
 {
 	struct netmap_priv *priv = be->priv;
@@ -802,6 +809,12 @@ netbe_send(struct net_backend *be, struct iovec *iov, int iovcnt, int len,
 {
 	if (be == NULL)
 		return -1;
+#if 0
+	int i;
+	D("sending iovcnt %d len %d iovec %p", iovcnt, len, iov);
+	for (i=0; i < iovcnt; i++)
+		D("   %3d: %4d %p", i, (int)iov[i].iov_len, iov[i].iov_base);
+#endif
 	return be->send(be, iov, iovcnt, len, more);
 }
 

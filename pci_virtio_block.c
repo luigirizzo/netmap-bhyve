@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_block.c 267393 2014-06-12 13:13:15Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_block.c 268976 2014-07-22 04:39:16Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_block.c 267393 2014-06-12 13:13:15Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_block.c 268976 2014-07-22 04:39:16Z jhb $");
 
 #include <sys/param.h>
 #include <sys/linker_set.h>
@@ -51,10 +51,6 @@ __FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_virtio_block.c 267393 2014-06-1
 #include "bhyverun.h"
 #include "pci_emul.h"
 #include "virtio.h"
-
-#ifndef min
-#define	min(a, b)	((a) < (b) ? (a) : (b))
-#endif
 
 #define VTBLK_RINGSZ	64
 
@@ -218,7 +214,7 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	case VBH_OP_IDENT:
 		/* Assume a single buffer */
 		strlcpy(iov[1].iov_base, sc->vbsc_ident,
-		    min(iov[1].iov_len, sizeof(sc->vbsc_ident)));
+		    MIN(iov[1].iov_len, sizeof(sc->vbsc_ident)));
 		err = 0;
 		break;
 	default:
@@ -300,8 +296,7 @@ pci_vtblk_init(struct vmctx *ctx, struct pci_devinst *pi, char *opts)
 		assert(sectsz != 0);
 	}
 
-	sc = malloc(sizeof(struct pci_vtblk_softc));
-	memset(sc, 0, sizeof(struct pci_vtblk_softc));
+	sc = calloc(1, sizeof(struct pci_vtblk_softc));
 
 	/* record fd of storage device/file */
 	sc->vbsc_fd = fd;

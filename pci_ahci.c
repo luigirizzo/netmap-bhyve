@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: stable/10/usr.sbin/bhyve/pci_ahci.c 267393 2014-06-12 13:13:15Z jhb $
+ * $FreeBSD: stable/10/usr.sbin/bhyve/pci_ahci.c 268953 2014-07-21 19:08:02Z jhb $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_ahci.c 267393 2014-06-12 13:13:15Z jhb $");
+__FBSDID("$FreeBSD: stable/10/usr.sbin/bhyve/pci_ahci.c 268953 2014-07-21 19:08:02Z jhb $");
 
 #include <sys/param.h>
 #include <sys/linker_set.h>
@@ -1786,8 +1786,7 @@ pci_ahci_init(struct vmctx *ctx, struct pci_devinst *pi, char *opts, int atapi)
 	dbg = fopen("/tmp/log", "w+");
 #endif
 
-       	sc = malloc(sizeof(struct pci_ahci_softc));
-	memset(sc, 0, sizeof(struct pci_ahci_softc));
+	sc = calloc(1, sizeof(struct pci_ahci_softc));
 	pi->pi_arg = sc;
 	sc->asc_pi = pi;
 	sc->ports = MAX_PORTS;
