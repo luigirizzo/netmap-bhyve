@@ -788,9 +788,12 @@ netbe_cleanup(struct net_backend *be)
 uint32_t
 netbe_get_features(struct net_backend *be)
 {
+	uint32_t f;
 	if (be == NULL)
 		return 0;
-	return be->get_features(be);
+	f = be->get_features(be);
+	D("device %s features 0x%x", be->name, f);
+	return f;
 }
 
 
