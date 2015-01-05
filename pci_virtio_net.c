@@ -552,12 +552,21 @@ pci_vtnet_init(struct vmctx *ctx, struct pci_devinst *pi, char *opts)
 	char *devname;
 	char *vtopts;
 	int mac_provided;
+	struct virtio_consts *vc;
 
-	sc = calloc(1, sizeof(struct pci_vtnet_softc));
+	/* sc also contains a copy of the vtnet_vi_consts,
+	 * because the capabilities change depending on
+	 * the backend.
+	 */
+	sc = calloc(1, sizeof(struct pci_vtnet_softc) +
+			sizeof(struct virtio_consts));
+	vc = (struct virtio_consts *)(sc + 1);
+	bcopy(&vtnet_vi_consts, vc, sizeof(*vc));
 
 	pthread_mutex_init(&sc->vsc_mtx, NULL);
 
-	vi_softc_linkup(&sc->vsc_vs, &vtnet_vi_consts, sc, pi, sc->vsc_queues);
+	/* XXX perhaps move this later ? */
+	vi_softc_linkup(&sc->vsc_vs, vc, sc, pi, sc->vsc_queues);
 	sc->vsc_vs.vs_mtx = &sc->vsc_mtx;
 
 	sc->vsc_queues[VTNET_RXQ].vq_qsize = VTNET_RINGSZ;
@@ -593,8 +602,7 @@ pci_vtnet_init(struct vmctx *ctx, struct pci_devinst *pi, char *opts)
 		if (!sc->vsc_be) {
 			WPRINTF(("net backend initialization failed\n"));
 		} else {
-			vtnet_vi_consts.vc_hv_caps |=
-				netbe_get_features(sc->vsc_be);
+			vc->vc_hv_caps |= netbe_get_features(sc->vsc_be);
 		}
 		free(devname);
 	}
