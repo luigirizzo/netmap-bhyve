@@ -46,8 +46,8 @@ SRCS+=	vmm_instruction_emul.c
 
 .ifdef CROSS_BUILD
 BASEDIR=/usr/home/luigi/FreeBSD
-S=${BASEDIR}/R10
-M=${BASEDIR}/obj_R10${S}/tmp/usr
+S=${BASEDIR}/R10-bsd9
+M=${BASEDIR}/obj_R10-bsd9${S}/tmp/usr
 .PATH: ${S}/sys/amd64/vmm /usr/src/sys/amd64/vmm 
 CFLAGS = -I${M}/include -I/${S}/sys -L${M}/lib
 .endif
